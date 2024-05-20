@@ -13,16 +13,9 @@
 // Challenge: Clippy doesn't find *everything*. What else
 // would you change to make this code better?
 
-const PI: f32 = std::f32::consts::PI;
+// const PI: f32 = std::f32::consts::PI;
 
 fn count_to_5() -> i32 {
-    let mut unnecessary_counter = 0;
-    loop {
-        if unnecessary_counter > 5 {
-            break;
-        }
-        unnecessary_counter += 1;
-    }
     5
 }
 
