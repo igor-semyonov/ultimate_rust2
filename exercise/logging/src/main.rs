@@ -7,6 +7,7 @@ use frogger::Frog;
 // 7. Update Cargo.toml to add the `env_logger` dependency
 
 fn main() {
+    env_logger::init();
     // 8. Initialize env_logger using the init() function at the top level of the library
 
     // 9. Run this program with `cargo run` and take a look at the default output.
@@ -22,5 +23,5 @@ fn main() {
     skippy.sleep();
 
     // Challenge: Go back to lib.rs and set the `target: ` argument for each logging call to be the
-    // path to the function.  For example, `Frog::new`
+   // path to the function.  For example, `Frog::new`
 }
