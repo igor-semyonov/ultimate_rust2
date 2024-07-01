@@ -1,64 +1,9 @@
 use rand::prelude::*;
 use rusty_engine::prelude::*;
-use std::cmp::Ordering;
-use std::fmt::Display;
 
-struct Score {
-    value: u32,
-    prefix: String,
-}
-impl PartialEq for Score {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-impl Eq for Score {}
-impl PartialOrd for Score {
-    fn partial_cmp(
-        &self,
-        other: &Self,
-    ) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Score {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.value
-            .cmp(&other.value)
-    }
-}
-impl std::ops::AddAssign<u32> for Score {
-    fn add_assign(&mut self, rhs: u32) {
-        self.value += rhs;
-    }
-}
-impl Default for Score {
-    fn default() -> Self {
-        Self::new(0, "")
-    }
-}
+mod score;
+use score::Score;
 
-impl Score {
-    fn new<S: Into<String>>(value: u32, prefix: S) -> Self {
-        Self {
-            value,
-            prefix: prefix.into(),
-        }
-    }
-}
-
-impl Display for Score {
-    fn fmt(
-        &self,
-        f: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
-        write!(
-            f,
-            "{}Score: {}",
-            self.prefix, self.value
-        )
-    }
-}
 
 #[derive(Resource)]
 // #[allow(dead_code)]
