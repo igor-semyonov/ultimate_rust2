@@ -4,13 +4,12 @@ use rusty_engine::prelude::*;
 mod score;
 use score::Score;
 
-
 #[derive(Resource)]
 // #[allow(dead_code)]
 struct GameState {
     high_score: Score,
     score: Score,
-    direction: Vec2,
+    velocity: Vec2,
     feris_index: u32,
     spawn_timer: Timer,
 }
@@ -22,7 +21,7 @@ impl Default for GameState {
                 0, "High ",
             ),
             score: Score::default(),
-            direction: Vec2::new(
+            velocity: Vec2::new(
                 1.0, 0.0,
             ),
             feris_index: 0,
@@ -192,62 +191,64 @@ fn game_logic(
     }
 
     // handle movement
-    const MOVEMENT_SPEED: f32 = 400.0;
-    let mut new_direction = Vec2::new(
+    const MAXIMUM_ACCELERATION: f32 = 1.0;
+    let mut acceleration = Vec2::new(
         0.0, 0.0,
     );
-    let player = engine
-        .sprites
-        .get_mut("player")
-        .unwrap();
     if engine
         .keyboard_state
         .pressed_any(&[KeyCode::Up, KeyCode::W])
     {
-        new_direction.y += MOVEMENT_SPEED;
+        acceleration.y += MAXIMUM_ACCELERATION;
     }
     if engine
         .keyboard_state
         .pressed_any(&[KeyCode::Down, KeyCode::R])
     {
-        new_direction.y -= MOVEMENT_SPEED;
+        acceleration.y -= MAXIMUM_ACCELERATION;
     }
     if engine
         .keyboard_state
         .pressed_any(&[KeyCode::Left, KeyCode::A])
     {
-        new_direction.x -= MOVEMENT_SPEED;
+        acceleration.x -= MAXIMUM_ACCELERATION;
     }
     if engine
         .keyboard_state
         .pressed_any(&[KeyCode::Right, KeyCode::S])
     {
-        new_direction.x += MOVEMENT_SPEED;
+        acceleration.x += MAXIMUM_ACCELERATION;
     }
-    player.translation += new_direction * engine.delta_f32;
+    game_state.velocity += acceleration.normalize_or_zero()
+        * MAXIMUM_ACCELERATION;
+    let player = engine
+        .sprites
+        .get_mut("player")
+        .unwrap();
+    player.translation +=
+        game_state.velocity * engine.delta_f32;
 
-    if new_direction
+    player.rotation = if game_state
+        .velocity
         .abs()
         .max_element()
-        != 0.0
+        == 0.0
     {
-        game_state.direction = new_direction;
-    }
-    player.rotation = f32::atan(
-        game_state
-            .direction
-            .y
-            / game_state
-                .direction
-                .x,
-    );
-    if game_state
-        .direction
-        .x
-        == -MOVEMENT_SPEED
-    {
-        player.rotation += std::f32::consts::PI;
-    }
+        0.0
+    } else {
+        f32::atan(
+            game_state
+                .velocity
+                .y
+                / game_state
+                    .velocity
+                    .x,
+        ) + ((game_state
+            .velocity
+            .x
+            < 0.0) as u32 as f32)
+            * std::f32::consts::PI
+    };
 
     // handle mouse
     if engine
@@ -310,10 +311,34 @@ fn game_logic(
         .just_pressed(KeyCode::G)
     {
         game_state.score = Score::default();
+        game_state.velocity = Vec2::new(
+            0.0, 0.0,
+        );
+        engine
+            .sprites
+            .get_mut("player")
+            .unwrap()
+            .translation = Vec2::new(
+            0.0, 0.0,
+        );
+        engine
+            .sprites
+            .clone()
+            .into_keys()
+            .for_each(
+                |label| {
+                    if label != "player".to_string() {
+                        engine.sprites.remove(&label);
+                    }
+                },
+            );
         let score = engine
             .texts
             .get_mut("score")
             .unwrap();
-        score.value = "Score: 0".to_string();
+        score.value = game_state
+            .score
+            .to_string()
+            .to_string();
     }
 }
