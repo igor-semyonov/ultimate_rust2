@@ -1,11 +1,70 @@
 use rand::prelude::*;
-use rusty_engine::prelude::{*, bevy::window::WindowDestroyed};
+use rusty_engine::prelude::*;
+use std::cmp::Ordering;
+use std::fmt::Display;
+
+struct Score {
+    value: u32,
+    prefix: String,
+}
+impl PartialEq for Score {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+impl Eq for Score {}
+impl PartialOrd for Score {
+    fn partial_cmp(
+        &self,
+        other: &Self,
+    ) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Score {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.value
+            .cmp(&other.value)
+    }
+}
+impl std::ops::AddAssign<u32> for Score {
+    fn add_assign(&mut self, rhs: u32) {
+        self.value += rhs;
+    }
+}
+impl Default for Score {
+    fn default() -> Self {
+        Self::new(0, "")
+    }
+}
+
+impl Score {
+    fn new<S: Into<String>>(value: u32, prefix: S) -> Self {
+        Self {
+            value,
+            prefix: prefix.into(),
+        }
+    }
+}
+
+impl Display for Score {
+    fn fmt(
+        &self,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        write!(
+            f,
+            "{}Score: {}",
+            self.prefix, self.value
+        )
+    }
+}
 
 #[derive(Resource)]
 // #[allow(dead_code)]
 struct GameState {
-    high_score: u32,
-    score: u32,
+    high_score: Score,
+    score: Score,
     direction: Vec2,
     feris_index: u32,
     spawn_timer: Timer,
@@ -14,8 +73,10 @@ struct GameState {
 impl Default for GameState {
     fn default() -> Self {
         Self {
-            high_score: 0,
-            score: 0,
+            high_score: Score::new(
+                0, "High ",
+            ),
+            score: Score::default(),
             direction: Vec2::new(
                 1.0, 0.0,
             ),
@@ -31,14 +92,16 @@ impl Default for GameState {
 fn main() {
     let mut game = Game::new();
 
-    game.window_settings(Window{
-        title: "Tutorial".to_string(),
-        mode: WindowMode::Windowed,
-        // resolution: WindowResolution::new(3440.0, 1440.0),
-        // width: 2400,
-        // height: 1200,
-        ..Default::default()
-    });
+    game.window_settings(
+        Window {
+            title: "Tutorial".to_string(),
+            mode: WindowMode::Windowed,
+            // resolution: WindowResolution::new(3440.0,
+            // 1440.0), width: 2400,
+            // height: 1200,
+            ..Default::default()
+        },
+    );
 
     let player = game.add_sprite(
         "player",
@@ -79,17 +142,54 @@ fn game_logic(
     engine: &mut Engine,
     game_state: &mut GameState,
 ) {
-    if engine.keyboard_state.just_pressed(KeyCode::Q){
+    if engine
+        .keyboard_state
+        .just_pressed(KeyCode::Q)
+    {
         engine.should_exit = true;
     }
 
-    let score = engine.texts.get_mut("score").unwrap();
-    score.translation.x = engine.window_dimensions.x / 2.0 - 80.0;
-    let score_y_offset = ((engine.time_since_startup_f64 * 7.0).sin() * 10.0) as f32;
-    score.translation.y = engine.window_dimensions.y / 2.0 - 30.0 + score_y_offset;
-    let high_score = engine.texts.get_mut("high_score").unwrap();
-    high_score.translation.x = -engine.window_dimensions.x / 2.0 + 100.0;
-    high_score.translation.y = engine.window_dimensions.y / 2.0 - 30.0;
+    let score = engine
+        .texts
+        .get_mut("score")
+        .unwrap();
+    score
+        .translation
+        .x = engine
+        .window_dimensions
+        .x
+        / 2.0
+        - 80.0;
+    let score_y_offset = ((engine.time_since_startup_f64
+        * 7.0)
+        .sin()
+        * 10.0) as f32;
+    score
+        .translation
+        .y = engine
+        .window_dimensions
+        .y
+        / 2.0
+        - 30.0
+        + score_y_offset;
+    let high_score = engine
+        .texts
+        .get_mut("high_score")
+        .unwrap();
+    high_score
+        .translation
+        .x = -engine
+        .window_dimensions
+        .x
+        / 2.0
+        + 100.0;
+    high_score
+        .translation
+        .y = engine
+        .window_dimensions
+        .y
+        / 2.0
+        - 30.0;
 
     for event in engine
         .collision_events
@@ -114,24 +214,25 @@ fn game_logic(
                         .texts
                         .get_mut("score")
                         .unwrap();
-                    score.value = format!(
-                        "Score: {}",
-                        game_state.score
-                    );
+                    score.value = game_state
+                        .score
+                        .to_string();
 
                     if game_state.score
                         > game_state.high_score
                     {
-                        game_state.high_score =
-                            game_state.score;
+                        game_state
+                            .high_score
+                            .value = game_state
+                            .score
+                            .value;
                         let high_score = engine
                             .texts
                             .get_mut("high_score")
                             .unwrap();
-                        high_score.value = format!(
-                            "High Score: {}",
-                            game_state.high_score
-                        );
+                        high_score.value = game_state
+                            .high_score
+                            .to_string();
                     }
                     engine
                         .audio_manager
@@ -227,6 +328,7 @@ fn game_logic(
         }
     }
 
+    // spawn new feris's
     if game_state
         .spawn_timer
         .tick(engine.delta)
@@ -249,14 +351,20 @@ fn game_logic(
             .y = thread_rng().gen_range(-305.0..305.0);
         feris.scale = 0.4;
         feris.collision = true;
+        engine
+            .audio_manager
+            .play_sfx(
+                SfxPreset::Minimize1,
+                0.5,
+            );
     }
 
     // reset game
     if engine
         .keyboard_state
-        .just_pressed(KeyCode::R)
+        .just_pressed(KeyCode::G)
     {
-        game_state.score = 0;
+        game_state.score = Score::default();
         let score = engine
             .texts
             .get_mut("score")
