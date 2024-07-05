@@ -10,7 +10,7 @@ struct GameState {
 impl Default for GameState {
     fn default() -> Self {
         Self {
-            health_amount: 5,
+            health_amount: 10,
             loss: false,
         }
     }
@@ -18,6 +18,7 @@ impl Default for GameState {
 
 fn main() {
     let mut game = Game::new();
+    let mut game_state = GameState::default();
 
     let player = game.add_sprite(
         "player",
@@ -43,6 +44,23 @@ fn main() {
             .x = -600.0 + 150.0 * i as f32;
         roadline.layer = 0.0;
     }
+
+    // health message
+    let health_message = game.add_text(
+        "health_message",
+        format!(
+            "Health: {}",
+            &game_state.health_amount
+        ),
+    );
+    health_message
+        .translation
+        .x = -360.0;
+    health_message
+        .translation
+        .y = 310.0;
+    health_message.font_size = 128.0;
+    health_message.layer = 0.0;
 
     game.audio_manager
         .play_music(
@@ -78,13 +96,17 @@ fn main() {
     }
 
     game.add_logic(game_logic);
-    game.run(GameState::default());
+    game.run(game_state);
 }
 
 fn game_logic(
     engine: &mut Engine,
     game_state: &mut GameState,
 ) {
+    if game_state.loss {
+        return;
+    }
+
     let mut direction = 0.0;
     const MOVEMENT_SPEED: f32 = 700.0;
     const ROAD_SPEED: f32 = 400.0;
@@ -118,6 +140,14 @@ fn game_logic(
             <= -320.0
     {
         game_state.health_amount = 0;
+        engine
+            .texts
+            .get_mut("health_message")
+            .unwrap()
+            .value = format!(
+            "Health: {}",
+            &game_state.health_amount
+        );
     }
 
     // move road left
@@ -163,5 +193,47 @@ fn game_logic(
                     thread_rng().gen_range(-300.0..300.0);
             };
         };
+    }
+
+    // handle collisions
+    let mut health_message = engine
+        .texts
+        .get_mut("health_message")
+        .unwrap();
+    for event in engine
+        .collision_events
+        .drain(..)
+    {
+        if !event
+            .pair
+            .either_contains("player")
+        // || event
+        //     .state
+        //     .is_end()()
+        {
+            continue;
+        }
+        if game_state.health_amount > 0 {
+            game_state.health_amount -= 1;
+            health_message.value = format!(
+                "Health: {}",
+                &game_state.health_amount
+            );
+            engine
+                .audio_manager
+                .play_sfx(
+                    SfxPreset::Impact3,
+                    0.5,
+                );
+        }
+    }
+
+    // loss condition
+    if game_state.health_amount <= 0 {
+        game_state.loss = true;
+        let game_over = engine.add_text("game_over", "Game Over!");
+        game_over.font_size = 256.0;
+        engine.audio_manager.stop_music();
+        engine.audio_manager.play_sfx(SfxPreset::Jingle3, 1.0);
     }
 }
