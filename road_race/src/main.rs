@@ -7,6 +7,20 @@ struct GameState {
     loss: bool,
 }
 
+impl GameState {
+    fn update_health_amount(
+        &mut self,
+        new_health_amount: u8,
+        health_message: &mut Text,
+    ) {
+        self.health_amount = new_health_amount;
+        health_message.value = format!(
+            "Health: {}",
+            self.health_amount
+        );
+    }
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
@@ -48,10 +62,11 @@ fn main() {
     // health message
     let health_message = game.add_text(
         "health_message",
-        format!(
-            "Health: {}",
-            &game_state.health_amount
-        ),
+        "",
+    );
+    game_state.update_health_amount(
+        game_state.health_amount,
+        health_message,
     );
     health_message
         .translation
@@ -139,14 +154,12 @@ fn game_logic(
             .y
             <= -320.0
     {
-        game_state.health_amount = 0;
-        engine
-            .texts
-            .get_mut("health_message")
-            .unwrap()
-            .value = format!(
-            "Health: {}",
-            &game_state.health_amount
+        game_state.update_health_amount(
+            0,
+            engine
+                .texts
+                .get_mut("health_message")
+                .unwrap(),
         );
     }
 
@@ -207,17 +220,16 @@ fn game_logic(
         if !event
             .pair
             .either_contains("player")
-        // || event
-        //     .state
-        //     .is_end()()
+            || event
+                .state
+                .is_end()
         {
             continue;
         }
         if game_state.health_amount > 0 {
-            game_state.health_amount -= 1;
-            health_message.value = format!(
-                "Health: {}",
-                &game_state.health_amount
+            game_state.update_health_amount(
+                game_state.health_amount - 1,
+                health_message,
             );
             engine
                 .audio_manager
@@ -231,9 +243,19 @@ fn game_logic(
     // loss condition
     if game_state.health_amount <= 0 {
         game_state.loss = true;
-        let game_over = engine.add_text("game_over", "Game Over!");
+        let game_over = engine.add_text(
+            "game_over",
+            "Game Over!",
+        );
         game_over.font_size = 256.0;
-        engine.audio_manager.stop_music();
-        engine.audio_manager.play_sfx(SfxPreset::Jingle3, 1.0);
+        engine
+            .audio_manager
+            .stop_music();
+        engine
+            .audio_manager
+            .play_sfx(
+                SfxPreset::Jingle3,
+                1.0,
+            );
     }
 }
